@@ -1,6 +1,6 @@
 # ₱£R$O₦AL Finance: Advanced Portfolio Dashboard
 
-![CodeQL Passing Badge](https://github.com/your-username/personal-finance/actions/workflows/github-code-scanning/codeql/badge.svg)
+![CodeQL Passing Badge](https://github.com/aritha-alahakoon/personal-finance/actions/workflows/github-code-scanning/codeql/badge.svg)
 
 #### Video Demo:  [Watch on YouTube](https://youtu.be/ogH2wI5TgyU)
 
