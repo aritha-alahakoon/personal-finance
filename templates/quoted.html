@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quoted
+{% endblock %}
+
+{% block main %}
+    <h2>{{ stock.name }} ({{ stock.symbol }})</h2>
+    <h1 class="display-4">{{ stock.price | usd }}</h1>
+
+    <table class="table">
+        <tr>
+            <td><strong>Market Cap:</strong> {{ stock.stats.market_cap }}</td>
+            <td><strong>P/E Ratio:</strong> {{ stock.stats.pe_ratio }}</td>
+            <td><strong>52W High:</strong> {{ stock.stats.high_52w | usd }}</td>
+        </tr>
+    </table>
+
+    <div style="position: relative; height:40vh; width:100%">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <div class="mt-4">
+        <a href="/buy?symbol={{ stock.symbol }}" class="btn btn-success btn-lg px-5">
+            Buy {{ stock.symbol }}
+        </a>
+    </div>
+
+    <div class="mt-4 text-start">
+        <h3>About {{ stock.name }}</h3>
+        <p class="mt-3"><strong>About the Company:</strong> {{ stock.stats.summary }}</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const labels = {{ labels | safe }};
+        const values = {{ values | safe }};
+
+        const startPrice = values[0];
+        const endPrice = values[values.length - 1];
+        const chartColor = endPrice >= startPrice ? '#28a745' : '#dc3545';
+
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            if (values.length === 0) {
+                console.error("No price data found for chart.");
+                return;
+            }
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: values,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 7
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}

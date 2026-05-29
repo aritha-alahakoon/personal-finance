@@ -1,0 +1,173 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Portfolio
+{% endblock %}
+
+{% block main %}
+    <div class="container py-4">
+        <div class="row mb-5 align-items-center">
+            <div class="col-md-4">
+                <div class="d-flex flex-column gap-3">
+                    <div class="card shadow-sm border-0 border-start border-primary border-4">
+                        <div class="card-body py-3">
+                            <h6 class="text-muted small mb-1">Total Net Worth</h6>
+                            <h3 class="fw-bold mb-0">{{ total | usd }}</h3>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 border-start border-secondary border-4">
+                        <a href="/cash" style="text-decoration: none; cursor: pointer;">
+                            <div class="card-body">
+                                <h6 class="text-muted">Cash Balance</h6>
+                                <h2 class="fw-bold text-secondary">{{ cash | usd }}</h2>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="card shadow-sm border-0 border-start border-info border-4">
+                        <div class="card-body py-3">
+                            <h6 class="text-muted small mb-1">Stock Value</h6>
+                            <h4 class="fw-bold mb-0 text-info">{{ (total - cash) | usd }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0 bg-white p-4">
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Symbol</th>
+                            <th class="text-end">Shares</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Today</th>
+                            <th class="text-end">Total Value</th>
+                            <th>Profit/Loss</th>
+                            <th>P/L Percentage (%)</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in ownerships %}
+                            <tr>
+                                <td><strong>{{ stock.symbol }}</strong><br><small class="text-muted">{{ stock.name }}</small></td>
+                                <td class="text-end">{{ stock.shares }}</td>
+                                <td class="text-end">{{ stock.price | usd }}</td>
+                                <td class="text-end">
+                                    <span class="{{ 'text-success' if stock.day_change >= 0 else 'text-danger' }}">
+                                        {{ "▲" if stock.day_change > 0 else "▼" }}
+                                        {{ "{:,.2f}".format(stock.day_change | abs) }}
+                                        <small>({{ "{:,.2f}".format(stock.day_change_pct) }}%)</small>
+                                    </span>
+                                </td>
+                                <td class="text-end">{{ stock.value | usd }}</td>
+                                <td class="{{ 'text-success' if stock.pl_money >= 0 else 'text-danger' }}">
+                                    {{ stock.pl_money | usd }}
+                                </td>
+                                <td>
+                                    <span class="badge {{ 'bg-success' if stock.pl_percent >= 0 else 'bg-danger' }}">
+                                        {{ "{:,.2f}".format(stock.pl_percent) }}%
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="/sell?symbol={{ stock.symbol }}&shares={{ stock.shares }}" class="btn btn-sm btn-outline-danger">
+                                        Sell
+                                    </a>
+                                    <a href="/buy?symbol={{ stock.symbol }}" class="btn btn-sm btn-outline-success">
+                                        Buy
+                                    </a>
+                                    <form action="/quote" method="post" style="display:inline;">
+                                        <input type="hidden" name="symbol" value="{{ stock.symbol }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Quote</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('allocationChart').getContext('2d');
+
+            // Used Gemini for education of specific options available in Charts.js
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ chart_labels | safe }},
+                    datasets: [{
+                        data: {{ chart_values | safe }},
+                        backgroundColor: [
+                            '#0d6efd', '#6610f2', '#6f42c1', '#d63384',
+                            '#dc3545', '#fd7e14', '#ffc107', '#198754',
+                            '#adb5bd'
+                        ],
+                        borderWidth: 2,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 14
+                                },
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        const total = data.datasets[0].data.reduce((apple, b) => apple + b, 0);
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const percentage = ((value / total) * 100).toFixed(1) + '%';
+
+                                            return {
+                                                text: `${label} (${percentage})`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: data.datasets[0].backgroundColor[i],
+                                                lineWidth: 0,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    let value = context.raw || 0;
+                                    return label + ': $' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        });
+    </script>
+{% endblock %}

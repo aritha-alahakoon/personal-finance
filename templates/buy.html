@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Buy
+{% endblock %}
+
+{% block main %}
+    <form action="/buy" method="post">
+        <div class="mb-3">
+            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" id="tickerSearch" list="tickerOptions" name="symbol" placeholder="Stock Symbol" required type="text" value="{{ symbol }}">
+            <datalist id="tickerOptions"></datalist>
+        </div>
+        <div class="mb-3">
+            <input autocomplete="off" class="form-control mx-auto w-auto" name="shares" placeholder="Number of shares" required type="text">
+        </div>
+        <button class="btn btn-primary" type="submit">Buy</button>
+    </form>
+    <script>
+        const searchInput = document.getElementById('tickerSearch');
+        const dataList = document.getElementById('tickerOptions');
+
+        function debounce(func, delay) {
+            let timeoutId;
+            return (...args) => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    func.apply(null, args);
+                }, delay);
+            };
+        }
+
+        async function performSearch(query) {
+            if (query.length < 2) return;
+
+            try {
+                const response = await fetch(`/search?q=${query}`);
+                const quotes = await response.json();
+
+                dataList.innerHTML = '';
+
+                quotes.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.symbol;
+                    option.textContent = `${item.name} (${item.exchange})`;
+                    dataList.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Search error:", err);
+            }
+        }
+
+        searchInput.addEventListener('input', debounce((e) => {
+            performSearch(e.target.value);
+        }, 250));
+    </script>
+{% endblock %}
